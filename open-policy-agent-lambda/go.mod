@@ -1,4 +1,4 @@
-module athene.com/opa-lambda
+module whyayala.com/opa-lambda
 
 go 1.17
 
