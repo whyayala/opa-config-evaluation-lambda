@@ -7,7 +7,7 @@ import (
 	"log"
 
 	services "whyayala.com/opa-lambda/src"
-	"athene.com/opa-lambda/src/structs"
+	"whyayala.com/opa-lambda/src/structs"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
