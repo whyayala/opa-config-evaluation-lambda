@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"log"
 
-	services "athene.com/opa-lambda/src"
+	services "whyayala.com/opa-lambda/src"
 	"athene.com/opa-lambda/src/structs"
 
 	"github.com/aws/aws-lambda-go/events"
