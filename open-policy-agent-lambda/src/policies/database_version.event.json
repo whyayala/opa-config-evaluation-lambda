@@ -1,0 +1,12 @@
+{
+  "invokingEvent": "{\"resourceType\":\"AWS::RDS::DBInstance\",\"resourceId\":\"db-25MLRHMZ6XH6YZNONTC6CMFCNE\",\"configurationItemCaptureTime\": \"2022-10-27T08:28:11.342Z\",\"configuration\":{\"engine\":\"aurora-postgresql\",\"engineVersion\":\"10.21\"}}",
+  "ruleParameters": "{\"<exampleKey>\":\"<exampleValue>\"}",
+  "resultToken": "myResultToken",
+  "eventLeftScope": false,
+  "executionRoleArn": "arn:aws:iam::123456789012:role/config-role",
+  "configRuleArn": "arn:aws:config:us-east-1:123456789012:config-rule/config-rule-0123456",
+  "configRuleName": "change-triggered-config-rule",
+  "configRuleId": "config-rule-0123456",
+  "accountId": "123456789012",
+  "version": "1.0"
+}

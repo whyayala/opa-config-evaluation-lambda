@@ -1,0 +1,135 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: 
+  - AWS::Serverless-2016-10-31
+  - AWS::LanguageExtensions
+Description: Substack providing central resources to support Config management
+Resources:
+  ComplianceBucket:
+    Type: AWS::S3::Bucket
+
+  ComplianceBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref ComplianceBucket
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - s3:GetBucketAcl
+              - s3:ListBucket
+            Resource: !Sub arn:aws:s3:::${ComplianceBucket}
+            Principal:
+              Service: config.amazonaws.com
+          - Effect: Allow
+            Action: s3:PutObject
+            Resource: !Sub arn:aws:s3:::${ComplianceBucket}/*
+            Principal:
+              Service: config.amazonaws.com
+            # TODO: condition key on same org 
+
+  MainConfig:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ./template.yml
+      Parameters:
+        ComplianceBucket: !Ref ComplianceBucket
+
+  ConfigStackSet:
+    Type: AWS::CloudFormation::StackSet
+    DependsOn:
+      - ComplianceBucketPolicy
+    Properties:
+      StackSetName: !Sub "${AWS::StackName}-Config"
+      Capabilities:
+        - CAPABILITY_NAMED_IAM
+        - CAPABILITY_IAM
+        - CAPABILITY_AUTO_EXPAND
+      AutoDeployment:
+        Enabled: true
+        RetainStacksOnAccountRemoval: false
+      PermissionModel: SERVICE_MANAGED
+      TemplateURL: ./template.yml
+      OperationPreferences:
+        MaxConcurrentPercentage: 50
+      Parameters:
+        - ParameterKey: ComplianceBucket
+          ParameterValue: !Ref ComplianceBucket
+      StackInstancesGroup:
+        - Regions:
+            - !Ref AWS::Region
+          DeploymentTargets:
+            # The resources in this template can only exist once per account. So we have to manage the whole org here and not just prod or non-prod
+            OrganizationalUnitIds:
+              - ou-ub8s-TODO # Get an org unit id
+
+  OrgAggregatorRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: config.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSConfigRoleForOrganizations
+
+  ConfigurationAggregator:
+    Type: AWS::Config::ConfigurationAggregator
+    Properties:
+      ConfigurationAggregatorName: MainOrganizationAggregator
+      OrganizationAggregationSource:
+        RoleArn: !GetAtt OrgAggregatorRole.Arn
+        AwsRegions:
+          - !Ref AWS::Region
+
+  OpenPolicyAgentLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: go1.x
+      CodeUri: ./open-policy-agent-lambda
+      Handler: main
+      Policies: 
+        - AWSLambdaBasicExecutionRole
+        - AWSConfigRulesExecutionRole
+        - Version: '2012-10-17' 
+          Statement:
+            - Effect: Allow
+              Action:
+                - 'config:PutEvaluations'
+              Resource: '*'
+
+  LambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      Principal: config.amazonaws.com
+      FunctionName: !Ref OpenPolicyAgentLambda
+
+  SupportedDatabaseVersionConfigRule:
+    Type: AWS::Config::OrganizationConfigRule
+    DependsOn:
+      - MainConfig
+      - ConfigStackSet
+      - ConfigurationAggregator
+      - LambdaPermission
+    Properties:
+      OrganizationConfigRuleName: SupportedDatabaseVersion
+      OrganizationCustomRuleMetadata:
+        MaximumExecutionFrequency: One_Hour
+        LambdaFunctionArn: !GetAtt OpenPolicyAgentLambda.Arn
+        OrganizationConfigRuleTriggerTypes:
+          - ScheduledNotification
+        ResourceTypesScope:
+          - AWS::RDS::DBInstance
+        InputParameters:
+          Fn::ToJsonString:
+            PolicyFile: src/policies/database_version.rego
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks:
+            - E3002

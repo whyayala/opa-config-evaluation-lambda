@@ -1,0 +1,12 @@
+{
+    "invokingEvent": "{\"ApplicationId\":\"arn:aws:serverlessrepo:ap-southeast-1:711761543063:applications/rdklib\",\"ChangeSetId\":\"arn:aws:cloudformation:us-east-1:123456789012:changeSet/a3d536322-585e-4ffd-9e2f-552c8b887d6f/ffe7ff5c-ab38-4ab9-b746-9c1617ca95c1\",\"SemanticVersion\":\"0.1.0\",\"StackId\":\"arn:aws:cloudformation:us-east-1:123456789012:stack/serverlessrepo-RDKlib-Layer/365436a0-a58a-11ea-9b04-12ae8fb95b53\"}",
+    "ruleParameters": "{\"PolicyFile\":\"src/policies/database_version.rego\"}",
+    "resultToken": "myResultToken",
+    "eventLeftScope": false,
+    "executionRoleArn": "arn:aws:iam::123456789012:role/config-role",
+    "configRuleArn": "arn:aws:config:us-east-1:123456789012:config-rule/config-rule-0123456",
+    "configRuleName": "change-triggered-config-rule",
+    "configRuleId": "config-rule-0123456",
+    "accountId": "123456789012",
+    "version": "1.0"
+}

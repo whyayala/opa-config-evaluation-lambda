@@ -1,0 +1,90 @@
+name: PR Verify
+on:
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  run_tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/setup-go@v3
+        with:
+          go-version: '^1.17'
+
+  opa_tests:
+    name: Open Policy Agent tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Setup OPA
+        uses: open-policy-agent/setup-opa@v2
+        with:
+          version: latest
+
+      - name: Run OPA Tests
+        run: opa test config/open-policy-agent-lambda/src/policies
+
+  # cfn_lint:
+  #   name: Cloudformation Lint
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v2
+
+  #     - name: Set up python
+  #       uses: actions/setup-python@v2
+  #       with:
+  #         python-version: 3.7.13
+
+  #     - name: Install Poetry
+  #       uses: snok/install-poetry@v1
+  #       with:
+  #          virtualenvs-create: false
+
+  #     - run: poetry install --no-interaction
+
+  #     - name: cfn-lint
+  #       run: 'poetry run cfn-lint'
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      # - name: Set up python
+      #   uses: actions/setup-python@v2
+      #   with:
+      #     python-version: 3.7.13
+
+      # - name: Install Poetry
+      #   uses: snok/install-poetry@v1
+      #   with:
+      #      virtualenvs-create: false
+
+      # - run: poetry install --no-interaction
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: arn:aws:iam::00000000000:role/GithubDeployer
+          aws-region: us-east-1
+
+      # - name: Install CDK
+      #   run: npm install -g aws-cdk
+
+      # - name: CDK synth
+      #   working-directory: ./user-roles
+      #   run: './synth-stacks.sh'
+
+      - name: Sam Build
+        run: 'sam build'
+
+

@@ -1,0 +1,72 @@
+Description: Centrally managed stack that provides support for AWS Config compliance
+Parameters:
+  ComplianceBucket:
+    Type: String
+    Description: Name of the S3 bucket to report configuration to.
+  
+Resources:
+  ConfigRecorderRole:
+    # We can't use a AWS::IAM::ServiceLinkedRole because config does not support custom suffixes and there is already a role with the generated name in some accounts
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: config.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWS_ConfigRole
+        - arn:aws:iam::aws:policy/ReadOnlyAccess
+
+  ConfigRecorder:
+    Type: AWS::Config::ConfigurationRecorder
+    Properties:
+      RoleARN: !GetAtt ConfigRecorderRole.Arn
+
+  ConfigDeliveryChannel:
+    Type: AWS::Config::DeliveryChannel
+    Properties:
+      ConfigSnapshotDeliveryProperties:
+        DeliveryFrequency: TwentyFour_Hours
+      S3BucketName: !Ref ComplianceBucket
+
+  ComplianceFailureTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      Subscription:
+        - Protocol: https
+          Endpoint: "https://whyayala.todo" #What to use here?
+
+  EventTopicPolicy:
+    Type: 'AWS::SNS::TopicPolicy'
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: 'sns:Publish'
+            Resource: '*'
+      Topics:
+        - !Ref ComplianceFailureTopic
+  
+  ConfigRuleFailureRule:
+    Type: AWS::Events::Rule
+    Properties: 
+      Description: "Notify the compliance failure topic when AWS Config detects a resource out of compliance"
+      State: ENABLED
+      EventPattern:
+        source:
+          - "aws.config"
+        detail-type: 
+          - "Config Rules Compliance Change"
+        detail: 
+          newEvaluationResult: 
+            complianceType: 
+              - "NON_COMPLIANT"
+      Targets:
+        - Id: "NotifyTopic"
+          Arn: !Ref ComplianceFailureTopic
